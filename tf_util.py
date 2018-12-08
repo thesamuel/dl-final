@@ -2,7 +2,7 @@ import vggish_slim
 import vggish_params
 import vggish_input
 
-def CreateVGGishNetwork(hop_size=0.96):   # Hop size is in seconds.
+def CreateVGGishNetwork(hop_size=0.96, sess):   # Hop size is in seconds.
   """Define VGGish model, load the checkpoint, and return a dictionary that points
   to the different tensors defined by the model.
   """
@@ -39,7 +39,7 @@ def CreateVGGishNetwork(hop_size=0.96):   # Hop size is in seconds.
           'layers': layers,
          }
 
-def ProcessWithVGGish(vgg, x, sr):
+def ProcessWithVGGish(vgg, x, sr), sess:
   '''Run the VGGish model, starting with a sound (x) at sample rate
   (sr). Return a whitened version of the embeddings. Sound must be scaled to be
   floats between -1 and +1.'''
@@ -59,7 +59,7 @@ def ProcessWithVGGish(vgg, x, sr):
   # print('Postprocessed VGGish embedding: ', postprocessed_batch[0])
   return postprocessed_batch[0]
 
-def EmbeddingsFromVGGish(vgg, x, sr):
+def EmbeddingsFromVGGish(vgg, x, sr, sess):
   '''Run the VGGish model, starting with a sound (x) at sample rate
   (sr). Return a dictionary of embeddings from the different layers
   of the model.'''
