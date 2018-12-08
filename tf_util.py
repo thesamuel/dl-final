@@ -39,7 +39,7 @@ def CreateVGGishNetwork(hop_size=0.96, sess):   # Hop size is in seconds.
           'layers': layers,
          }
 
-def ProcessWithVGGish(vgg, x, sr), sess:
+def ProcessWithVGGish(vgg, x, sr, sess):
   '''Run the VGGish model, starting with a sound (x) at sample rate
   (sr). Return a whitened version of the embeddings. Sound must be scaled to be
   floats between -1 and +1.'''
