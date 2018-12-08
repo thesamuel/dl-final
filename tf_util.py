@@ -1,6 +1,7 @@
 import vggish_slim
 import vggish_params
 import vggish_input
+import vggish_postprocess
 import tensorflow as tf
 
 def CreateVGGishNetwork(sess, hop_size=0.96):   # Hop size is in seconds.
