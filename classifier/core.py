@@ -21,11 +21,11 @@ except BaseException:
     import _pickle as cPickle
 
 
-def move_data_to_gpu(x, cuda, volatile=False):
+def move_data_to_gpu(x, cuda, requires_grad=False):
     x = torch.Tensor(x)
     if cuda:
         x = x.cuda()
-    x = Variable(x, volatile=volatile)
+    x = Variable(x, requires_grad=requires_grad)
     return x
 
 
@@ -36,7 +36,7 @@ def forward_in_batch(model, x, batch_size, cuda):
 
     for i1 in range(batch_num):
         batch_x = x[i1 * batch_size: (i1 + 1) * batch_size]
-        batch_x = move_data_to_gpu(batch_x, cuda, volatile=True)
+        batch_x = move_data_to_gpu(batch_x, cuda, requires_grad=True)
         output = model(batch_x)
         output_all.append(output)
 
@@ -46,7 +46,6 @@ def forward_in_batch(model, x, batch_size, cuda):
 
 def evaluate(model, input, target, stats_dir, probs_dir, iteration):
     """Evaluate a model.
-
     Args:
       model: object
       output: 2d array, (samples_num, classes_num)
@@ -54,7 +53,6 @@ def evaluate(model, input, target, stats_dir, probs_dir, iteration):
       stats_dir: str, directory to write out statistics.
       probs_dir: str, directory to write out output (samples_num, classes_num)
       iteration: int
-
     Returns:
       None
     """
@@ -95,7 +93,8 @@ def evaluate(model, input, target, stats_dir, probs_dir, iteration):
         logging.info("Saveing stat to {}".format(stat_path))
 
 
-def train(data_dir, workspace, mini_data, balance_type, learning_rate, filename, model_type, model, batch_size, cuda):
+def train(data_dir, workspace, mini_data, balance_type, learning_rate, filename, model_type, model, batch_size, cuda,
+          is_water):
     """Train a model.
     """
 
@@ -111,29 +110,25 @@ def train(data_dir, workspace, mini_data, balance_type, learning_rate, filename,
     # Load data
     load_time = time.time()
 
-    if mini_data:
-        # Only load balanced data
-        (bal_train_x, bal_train_y, bal_train_id_list) = utilities.load_data(
-            bal_train_hdf5_path)
+    # Load balanced data
+    (bal_train_x, bal_train_y, bal_train_id_list) = water_transform(
+        *utilities.load_data(bal_train_hdf5_path))
 
+    if mini_data:
         train_x = bal_train_x
         train_y = bal_train_y
         train_id_list = bal_train_id_list
-
     else:
-        # Load both balanced and unbalanced data
-        (bal_train_x, bal_train_y, bal_train_id_list) = utilities.load_data(
-            bal_train_hdf5_path)
-
-        (unbal_train_x, unbal_train_y, unbal_train_id_list) = utilities.load_data(
-            unbal_train_hdf5_path)
+        # Load unbalanced data and append to balanced
+        (unbal_train_x, unbal_train_y, unbal_train_id_list) = water_transform(
+            *utilities.load_data(unbal_train_hdf5_path))
 
         train_x = np.concatenate((bal_train_x, unbal_train_x))
         train_y = np.concatenate((bal_train_y, unbal_train_y))
         train_id_list = bal_train_id_list + unbal_train_id_list
 
     # Test data
-    (test_x, test_y, test_id_list) = utilities.load_data(test_hdf5_path)
+    (test_x, test_y, test_id_list) = water_transform(*utilities.load_data(test_hdf5_path))
 
     logging.info("Loading data time: {:.3f} s".format(time.time() - load_time))
     logging.info("Training data shape: {}".format(train_x.shape))
@@ -161,10 +156,8 @@ def train(data_dir, workspace, mini_data, balance_type, learning_rate, filename,
     # Data generator
     if balance_type == 'no_balance':
         DataGenerator = data_generator.VanillaDataGenerator
-
     elif balance_type == 'balance_in_batch':
         DataGenerator = data_generator.BalancedDataGenerator
-
     else:
         raise Exception("Incorrect balance_type!")
 
@@ -182,8 +175,7 @@ def train(data_dir, workspace, mini_data, balance_type, learning_rate, filename,
     for (batch_x, batch_y) in train_gen.generate():
 
         # Compute stats every several interations
-        if iteration % call_freq == 0 and iteration > 1:
-
+        if iteration % call_freq == 0:
             logging.info("------------------")
 
             logging.info(
