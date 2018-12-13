@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(1, os.path.join(sys.path[0], '../'))
 import numpy as np
 import h5py
@@ -19,6 +20,43 @@ try:
     import cPickle
 except BaseException:
     import _pickle as cPickle
+
+
+def labels_to_bool(labels, classes):
+    for i in classes:
+        if labels[i]:
+            return True
+    return False
+
+
+def label_water(y):
+    # 288	/m/0838f	Water
+    # 370	/m/02jz0l	Water tap, faucet
+    # 371	/m/0130jx	Sink (filling or washing)
+    # 372	/m/03dnzn	Bathtub (filling or washing)
+    # 374	/m/01jt3m	Toilet flush
+    water_classes = [288, 370, 371, 372, 374]
+    return [labels_to_bool(l, water_classes) for l in y]
+
+
+def water_transform(x, y, id_list):
+    positives = np.array([x for x in zip(x, label_water(y), id_list) if x[1]])
+    negatives = np.array([x for x in zip(x, label_water(y), id_list) if not x[1]])
+
+    np.random.shuffle(negatives)
+    negatives = negatives[:len(positives)]  # Works if less positives than negatives
+
+    xp, yp, id_list_p = list(zip(*positives))
+    xn, yn, id_list_n = negatives = list(zip(*negatives))
+
+    x = np.concatenate((xp, xn))
+    y = np.concatenate((yp, yn))
+    id_list = np.concatenate((id_list_p, id_list_n))
+
+    # Transform y values
+    y = np.array([[True, False] if yv else [False, True] for yv in y])
+
+    return x, y, id_list
 
 
 def move_data_to_gpu(x, cuda, requires_grad=False):
